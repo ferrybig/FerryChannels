@@ -1,0 +1,67 @@
+name: FerryChatChannel
+main: me.ferry.bukkit.plugins.ferrychannel.FerryChatChannelPlugin
+version: 1.0.0
+author: ferrybig
+description: 'Better chats'
+depend: [FerryPluginCore]
+commands:
+  0:
+    description: chat inside channel 0
+    usage:
+           /<command>
+  1:
+    description: chat inside channel 1
+    usage:
+           /<command>
+  2:
+    description: chat inside channel 2
+    usage:
+           /<command>
+  3:
+    description: chat inside channel 3
+    usage:
+           /<command>
+  4:
+    description: chat inside channel 4
+    usage:
+           /<command>
+  5:
+    description: chat inside channel 5
+    usage:
+           /<command>
+  6:
+    description: chat inside channel 6
+    usage:
+           /<command>
+  7:
+    description: chat inside channel 7
+    usage:
+           /<command>
+  8:
+    description: chat inside channel 8
+    usage:
+           /<command>
+  9:
+    description: chat inside channel 9
+    usage:
+           /<command>
+  join:
+    description: joins a channel
+    usage:
+           /<command> [channel]
+  leave:
+    description: leaves a channel
+    usage:
+           /<command> [channel]
+  channels:
+    description: shows your channels
+    usage:
+           /<command>
+  ferry-channels:
+    description: administrate ferry channels
+    usage:
+           /<command>
+  chat-reload:
+      permissions: channels.reload
+  chat-debug:
+      description: administrate ferry channels
