@@ -42,6 +42,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     public final Map<?, ?>[] toClear = new Map<?, ?>[]{
         players, offlinePlayers, offlinePlayerToGroups, groups
     };
+    private static PlayerInfo defaultInfoUnconfigured = new PlayerInfo(null, -1, null, null);
     private PlayerInfo defaultInfo;
     private String recieveFormat;
     private String messageFormat;
@@ -50,34 +51,34 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
      * need to be thread safe, <code>CopyOnWriteArraySet</code> is a good choose
      * for this
      */
-    private final Set<String> blockedChannels = new CopyOnWriteArraySet<String>();
+    private final Set<String> blockedChannels = new CopyOnWriteArraySet<>();
     /**
      * You're joined at login to these channels Only writen on plugin startup
      * and need to be thread safe, <code>CopyOnWriteArraySet</code> is a good
      * choose for this
      */
-    private final Set<String> defaultChannels = new CopyOnWriteArraySet<String>();
+    private final Set<String> defaultChannels = new CopyOnWriteArraySet<>();
     /**
      * Channels without join and leave broadcast Only writen on plugin startup
      * and need to be thread safe, <code>CopyOnWriteArraySet</code> is a good
      * choose for this
      */
-    private final Set<String> preventChannelBroadcasts = new CopyOnWriteArraySet<String>();
+    private final Set<String> preventChannelBroadcasts = new CopyOnWriteArraySet<>();
     /**
      * the channels where death messages are moved to Only writen on plugin
      * startup and need to be thread safe, <code>CopyOnWriteArraySet</code> is a
      * good choose for this
      */
-    private final Set<String> deathChannels = new CopyOnWriteArraySet<String>();
-    private final List<String> channelColors = new CopyOnWriteArrayList<String>();
+    private final Set<String> deathChannels = new CopyOnWriteArraySet<>();
+    private final List<String> channelColors = new CopyOnWriteArrayList<>();
     private String channelLeaveMessage;
     private String channelJoinMessage;
     private boolean handleDeathMessages;
     private String deathFormat;
-    boolean stopTalk = true;
-    boolean doFullSave;
+    private boolean stopTalk = true;
+    private boolean debug = false;
     private Messages messages;
-    boolean setDisplayName;
+    private boolean setDisplayName;
     private int maxChannels;
     private int maxLengthAllowed;
     private boolean blockAllChannelBroadcasts;
@@ -149,7 +150,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     }
 
     private List<String> getGroups(Player player) {
-        List<String> groups = new ArrayList<String>();
+        List<String> groups = new ArrayList<>();
         if (player.hasMetadata("groups")) {
             List<MetadataValue> metadata = player.getMetadata("groups");
             for (MetadataValue value : metadata) {
@@ -191,7 +192,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
             return;
         }
         if (!this.preventChannelBroadcasts.contains(channel)) {
-            broadcastChat(new ArrayList<Player>(Bukkit.getOnlinePlayers()), channel, player, this.channelJoinMessage.replace(CHANNEL_PATTERN, channel), "join");
+            broadcastChat(new ArrayList<>(Bukkit.getOnlinePlayers()), channel, player, this.channelJoinMessage.replace(CHANNEL_PATTERN, channel), "join");
         }
     }
     public static final String CHANNEL_PATTERN = "{channel}";
@@ -204,7 +205,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
             return;
         }
         if (!this.preventChannelBroadcasts.contains(channel)) {
-            broadcastChat(new ArrayList<Player>(Bukkit.getOnlinePlayers()), channel, player, this.channelLeaveMessage.replace(CHANNEL_PATTERN, channel), "leave");
+            broadcastChat(new ArrayList<>(Bukkit.getOnlinePlayers()), channel, player, this.channelLeaveMessage.replace(CHANNEL_PATTERN, channel), "leave");
         }
     }
 
@@ -261,7 +262,8 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         final String playerName = player.getName();
         final PlayerInfo info = this.players.get(playerName);
         if (info == null) {
-            evt.getPlayer().sendMessage(ChatColor.RED + "Something went wrong, :'(");
+            sendMessage(player, ChatColor.RED + "Something went wrong, :'(");
+            return;
         }
         final List<String> channels = info.getChannels();
         final int mainChannel = info.getMainChannel();
@@ -377,7 +379,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
                 return;
             }
         }
-        info.save(playerSection == null ? this.getConfig().createSection("players." + name) : playerSection, this.doFullSave);
+        info.save(playerSection == null ? this.getConfig().createSection("players." + name) : playerSection);
     }
 
     private void refreshPlayer(Player name) {
@@ -589,44 +591,45 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
 
         this.loadGroups();
 
-        this.defaultInfo = PlayerInfo.load(config.getConfigurationSection("defaultInfo"));
+        this.defaultInfo = PlayerInfo.load(config.getConfigurationSection("defaultInfo"), defaultInfoUnconfigured);
+        this.defaultInfo.save(config.createSection("defaultInfo"));
         /**
          * per-player messages {channelindex} = channel index {color} = channel
          * color {format} = channel mesage
          */
-        this.recieveFormat = ChatColor.translateAlternateColorCodes('&', config.getString("channel.recieveformat", "[{channelindex}] {color} {format}"));
+        this.recieveFormat = ChatColor.translateAlternateColorCodes('&', config.getString("channel.recieveformat", "{color} [{channelindex}] &r {format}"));
+        config.set("channel.recieveformat", this.recieveFormat.replace(ChatColor.COLOR_CHAR, '&'));
+
         /**
          * Channel message {tag} = chattag {name} = playername {message} =
          * message {channel} = channel name {nameColor} = name color
          */
         this.messageFormat = ChatColor.translateAlternateColorCodes('&', config.getString("channel.messageformat", "[{channel}] [{tag} <{nameColor}{name}>] {message}"));
-        /**
-         * Per player jojn message {name} = playername {message} = default join
-         * message
-         */
+        config.set("channel.messageformat", this.messageFormat.replace(ChatColor.COLOR_CHAR, '&'));
+
         this.channelJoinMessage = ChatColor.translateAlternateColorCodes('&', config.getString("channel.joinMsg", "{name} has joined this channel"));
-        /**
-         * Per player jojn message {name} = playername {message} = default join
-         * message
-         */
-        this.deathFormat = ChatColor.translateAlternateColorCodes('&', config.getString("channel.deathformat", "[{channel}] {message}"));
-        /**
-         * Per player leave message {name} = playername {message} = default
-         * leave message
-         */
+        config.set("channel.joinMsg", this.channelJoinMessage.replace(ChatColor.COLOR_CHAR, '&'));
+
         this.channelLeaveMessage = ChatColor.translateAlternateColorCodes('&', config.getString("channel.leaveMsg", "{name} has left this channel"));
+        config.set("channel.leaveMsg", this.channelLeaveMessage.replace(ChatColor.COLOR_CHAR, '&'));
 
-        handleDeathMessages = config.getBoolean("death.enabled");
+        this.deathFormat = ChatColor.translateAlternateColorCodes('&', config.getString("channel.deathformat", "[{channel}] {message}"));
+        config.set("channel.deathformat", this.deathFormat.replace(ChatColor.COLOR_CHAR, '&'));
 
-        this.doFullSave = config.getBoolean("fullsave", false);
+        this.handleDeathMessages = config.getBoolean("death.enabled");
+        config.set("death.enabled", handleDeathMessages);
+
+        this.debug = config.getBoolean("debug", false);
+        config.set("debug", debug);
 
         this.blockAllChannelBroadcasts = config.getBoolean("preventBroadcastAll", false);
+        config.set("preventBroadcastAll", blockAllChannelBroadcasts);
 
         this.dontSavePlayers = config.getBoolean("dontSavePlayers", false);
-
-        this.doFullSave = config.getBoolean("fullsave", false);
+        config.set("dontSavePlayers", dontSavePlayers);
 
         this.setDisplayName = config.getBoolean("setDisplayName", false);
+        config.set("setDisplayName", this.setDisplayName);
 
         this.maxChannels = config.getInt("channels.limit", 10);
 
