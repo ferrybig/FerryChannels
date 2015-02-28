@@ -1,13 +1,13 @@
 package me.ferry.bukkit.plugins.ferrychannel;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import me.ferry.bukkit.plugins.PluginBase;
@@ -35,14 +35,13 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 public class FerryChatChannelPlugin extends PluginBase implements Listener, PluginMessageListener {
 
-    public final Map<String, PlayerInfo> players = Collections.synchronizedMap(new HashMap<String, PlayerInfo>());
-    public final Map<String, PlayerInfo> offlinePlayers = Collections.synchronizedMap(new HashMap<String, PlayerInfo>());
-    public final Map<String, PlayerInfo> offlinePlayerToGroups = Collections.synchronizedMap(new HashMap<String, PlayerInfo>());
+    public final Map<UUID, PlayerInfo> players = Collections.synchronizedMap(new HashMap<UUID, PlayerInfo>());
+    public final Map<UUID, PlayerInfo> offlinePlayers = Collections.synchronizedMap(new HashMap<UUID, PlayerInfo>());
     public final Map<String, PlayerInfo> groups = Collections.synchronizedMap(new HashMap<String, PlayerInfo>());
     public final Map<?, ?>[] toClear = new Map<?, ?>[]{
-        players, offlinePlayers, offlinePlayerToGroups, groups
+        players, offlinePlayers, groups
     };
-    private static PlayerInfo defaultInfoUnconfigured = new PlayerInfo(null, -1, null, null);
+    private final static PlayerInfo defaultInfoUnconfigured = new PlayerInfo(null, -1, "", "");
     private PlayerInfo defaultInfo;
     private String recieveFormat;
     private String messageFormat;
@@ -106,7 +105,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
 
             @Override
             public void run() {
-                for (Map.Entry<String, PlayerInfo> offline : offlinePlayers.entrySet()) {
+                for (Map.Entry<UUID, PlayerInfo> offline : offlinePlayers.entrySet()) {
                     savePlayerInfo(offline.getKey(), offline.getValue());
                 }
                 offlinePlayers.clear();
@@ -150,14 +149,14 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     }
 
     private List<String> getGroups(Player player) {
-        List<String> groups = new ArrayList<>();
+        List<String> playerGroups = new ArrayList<>();
         if (player.hasMetadata("groups")) {
             List<MetadataValue> metadata = player.getMetadata("groups");
             for (MetadataValue value : metadata) {
                 Object value1 = value.value();
                 if (value1 instanceof Iterable<?>) {
                     for (Object obj : (Iterable) value1) {
-                        groups.add(obj.toString());
+                        playerGroups.add(obj.toString());
                     }
                 }
             }
@@ -167,10 +166,10 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         for (PermissionAttachmentInfo perm : perms) {
             if (perm.getPermission().startsWith("group.") && perm.getValue()) {
                 String group = perm.getPermission().substring(6);
-                groups.add(group);
+                playerGroups.add(group);
             }
         }
-        return groups;
+        return playerGroups;
     }
 
     private PlayerInfo getSuperPermGroup(Player player) {
@@ -213,10 +212,10 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     public void onQuit(PlayerQuitEvent evt) {
         final String playerName = evt.getPlayer().getName();
 
-        if (this.players.containsKey(playerName)) {
-            PlayerInfo info = this.players.get(playerName);
-            this.offlinePlayers.put(playerName, this.players.get(playerName));
-            this.players.remove(playerName);
+        if (this.players.containsKey(evt.getPlayer().getUniqueId())) {
+            PlayerInfo info = this.players.get(evt.getPlayer().getUniqueId());
+            this.offlinePlayers.put(evt.getPlayer().getUniqueId(), this.players.get(evt.getPlayer().getUniqueId()));
+            this.players.remove(evt.getPlayer().getUniqueId());
 
             for (String channel : info.getChannels()) {
                 broadcastChannelQuit(evt.getPlayer(), channel);
@@ -248,11 +247,6 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         return list.get(index);
     }
 
-    /**
-     * handles chat
-     * <p>
-     * @param evt chat event
-     */
     @EventHandler(priority = EventPriority.LOWEST)
     public void onChat(AsyncPlayerChatEvent evt) {
         if (evt.isCancelled()) {
@@ -260,7 +254,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         }
         final Player player = evt.getPlayer();
         final String playerName = player.getName();
-        final PlayerInfo info = this.players.get(playerName);
+        final PlayerInfo info = this.players.get(evt.getPlayer().getUniqueId());
         if (info == null) {
             sendMessage(player, ChatColor.RED + "Something went wrong, :'(");
             return;
@@ -307,15 +301,15 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     }
 
     public void broadcastChat(Collection<? extends Player> playerList, String chatChannel, Player player, String format, String message) {
-        final String playerName = player != null ? player.getName() : "";
-        PlayerInfo info1 = this.players.get(playerName);
+        final String playerName = player.getName();
+        PlayerInfo info1 = this.players.get(player.getUniqueId());
         String lowFormat = this.recieveFormat.replace("{format}", format).
             replace("{name}", playerName).
             replace("{dispname}", player.getDisplayName()).
             replace(CHANNEL_PATTERN, chatChannel).
             replace("{nameColor}", info1 != null ? ChatColor.translateAlternateColorCodes('&', info1.getNameColor()) : "");
         for (Player toTest : playerList) {
-            PlayerInfo info = this.players.get(toTest.getName());
+            PlayerInfo info = this.players.get(toTest.getUniqueId());
             if (info != null) {
                 final List<String> channels = info.getChannels();
                 int i = -1;
@@ -356,35 +350,30 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     }
 
     private void save() {
-        for (Map.Entry<String, PlayerInfo> offline : this.offlinePlayers.entrySet()) {
+        for (Map.Entry<UUID, PlayerInfo> offline : this.offlinePlayers.entrySet()) {
             savePlayerInfo(offline.getKey(), offline.getValue());
         }
         this.offlinePlayers.clear();
-        for (Map.Entry<String, PlayerInfo> offline : this.players.entrySet()) {
+        for (Map.Entry<UUID, PlayerInfo> offline : this.players.entrySet()) {
             savePlayerInfo(offline.getKey(), offline.getValue());
-            this.offlinePlayerToGroups.remove(offline.getKey());
         }
         logInfo("AutoSaved!");
     }
 
-    private void savePlayerInfo(String name, PlayerInfo info) {
+    private void savePlayerInfo(UUID name, PlayerInfo info) {
         if (this.dontSavePlayers) {
             return;
         }
-        ConfigurationSection playerSection = this.getConfig().getConfigurationSection("players." + name);
-        Player player = Bukkit.getPlayerExact(name);
-        PlayerInfo compare = player == null ? this.offlinePlayerToGroups.get(name) : this.getSuperPermGroup(player);
-        if (info.equals(compare)) {
-            if (playerSection == null) {
-                return;
-            }
+        ConfigurationSection sec = this.getConfig().createSection("players." + name);
+        info.save(sec);
+        if (sec.getKeys(false).isEmpty()) {
+            this.getConfig().set("players." + name, null);
         }
-        info.save(playerSection == null ? this.getConfig().createSection("players." + name) : playerSection);
     }
 
     private void refreshPlayer(Player name) {
-        if (this.players.containsKey(name.getName())) {
-            this.players.remove(name.getName());
+        if (this.players.containsKey(name.getUniqueId())) {
+            this.players.remove(name.getUniqueId());
             this.loadPlayer(name, false);
         }
     }
@@ -438,7 +427,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         String deathMsg = evt.getDeathMessage();
         evt.setDeathMessage(null);
         for (String channel : this.deathChannels) {
-            this.broadcastChat(new ArrayList<Player>(Bukkit.getOnlinePlayers()), channel, evt.getEntity(), this.deathFormat.replace(CHANNEL_PATTERN, channel), deathMsg);
+            this.broadcastChat(new ArrayList<>(Bukkit.getOnlinePlayers()), channel, evt.getEntity(), this.deathFormat.replace(CHANNEL_PATTERN, channel), deathMsg);
         }
         logInfo("Death message: " + deathMsg);
     }
@@ -446,13 +435,13 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     private void selectChannelAndChat(CommandSender sender, int newMainChannel, String[] arg) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-            PlayerInfo info = this.players.get(player.getName());
+            PlayerInfo info = this.players.get(player.getUniqueId());
             if (newMainChannel >= info.getChannels().size()) {
                 sender.sendMessage(this.messages.channelNumberToHigh(info.getChannels().size()));
             }
             info.setMainChannels(newMainChannel);
             this.scheduleSave();
-            final List<String> modifedChannelList = new ArrayList<String>(info.getChannels());
+            final List<String> modifedChannelList = new ArrayList<>(info.getChannels());
             String channelName = getChannelName(modifedChannelList, info.getMainChannel());
             sender.sendMessage(this.messages.chancedDefaultTalkChannel(channelName, newMainChannel, this.getChannelColor(newMainChannel)));
             if (arg.length > 0) {
@@ -470,7 +459,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     private void joinChat(CommandSender sender, String newName) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-            PlayerInfo info = this.players.get(player.getName());
+            PlayerInfo info = this.players.get(player.getUniqueId());
             for (char character : newName.toCharArray()) {
                 if (!Character.isLetterOrDigit(character)) {
                     player.sendMessage(this.messages.invalidChannelName(newName));
@@ -502,7 +491,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     private void leaveChat(CommandSender sender, String newName) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-            PlayerInfo info = this.players.get(player.getName());
+            PlayerInfo info = this.players.get(player.getUniqueId());
             if (!info.getChannels().contains(newName)) {
                 player.sendMessage(this.messages.leaveChannelNotFound(getPluginName()));
                 return;
@@ -519,7 +508,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
     private void showChats(CommandSender sender) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-            PlayerInfo info = this.players.get(player.getName());
+            PlayerInfo info = this.players.get(player.getUniqueId());
             final List<String> channels = info.getChannels();
             String header = this.messages.listHeader();
             if (!header.isEmpty()) {
@@ -667,35 +656,34 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         if (this.task != null) {
             this.task.run();
         }
-        this.players.clear();
-        this.offlinePlayerToGroups.clear();
-        this.offlinePlayers.clear();
+        for (Map<?, ?> m : this.toClear) {
+            m.clear();
+        }
         this.getServer().getMessenger().unregisterIncomingPluginChannel(this, "FerryChatChannel", this);
         this.getServer().getMessenger().unregisterOutgoingPluginChannel(this, "FerryChatChannel");
     }
 
-    private void loadPlayer(Player evt, boolean useCache) {
-        final String playerName = evt.getName();
+    private void loadPlayer(Player player, boolean useCache) {
+        final String playerName = player.getName();
         PlayerInfo info = null;
-        if (offlinePlayers.containsKey(playerName)) {
+        if (offlinePlayers.containsKey(player.getUniqueId())) {
             if (useCache) {
-                players.put(playerName, info = offlinePlayers.get(playerName));
+                players.put(player.getUniqueId(), info = offlinePlayers.get(player.getUniqueId()));
             }
-            offlinePlayers.remove(playerName);
+            offlinePlayers.remove(player.getUniqueId());
         }
         if (info == null) {
             ConfigurationSection playerSection = this.getConfig().getConfigurationSection("players." + playerName);
-            PlayerInfo group = getSuperPermGroup(evt);
+            PlayerInfo group = getSuperPermGroup(player);
             if (playerSection == null) {
                 if (group == null) {
                     group = this.defaultInfo.clone();
                 }
-                players.put(playerName, info = group.clone());
+                players.put(player.getUniqueId(), info = group.clone());
 
             } else {
-                players.put(playerName, info = PlayerInfo.load(playerSection, group));
+                players.put(player.getUniqueId(), info = PlayerInfo.load(playerSection, group));
             }
-            this.offlinePlayerToGroups.put(playerName, group);
         }
         for (String str : this.defaultChannels) {
             if (!info.getChannels().contains(str)) {
@@ -704,11 +692,11 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         }
         StringBuilder channelStr = new StringBuilder();
         for (String channel : info.getChannels()) {
-            broadcastChannelJoin(evt, channel);
+            broadcastChannelJoin(player, channel);
             channelStr.append(channel).append(",");
         }
         if (this.setDisplayName) {
-            evt.setDisplayName(ChatColor.translateAlternateColorCodes('&', info.getNameColor() + evt.getPlayer().getName()));
+            player.setDisplayName(ChatColor.translateAlternateColorCodes('&', info.getNameColor() + player.getPlayer().getName()));
         }
         //evt.sendPluginMessage(this, "FerryChatChannel", ("channels:" + channelStr.toString()).getBytes());
     }
