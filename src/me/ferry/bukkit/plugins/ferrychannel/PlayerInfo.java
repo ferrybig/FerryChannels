@@ -72,7 +72,7 @@ public final class PlayerInfo {
     }
 
     public void save(ConfigurationSection to) {
-        to.set("mainChannel", mainChannel);
+        to.set("mainChannel", mainChannel < 0 ? null : mainChannel);
         to.set("channels", parent.channels.equals(this.channels) ? null : new LinkedList<>(channels));
         to.set("chattag", chatTag);
         to.set("nameColor", nameColor);
