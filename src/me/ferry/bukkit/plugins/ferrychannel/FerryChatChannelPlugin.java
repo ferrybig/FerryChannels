@@ -668,7 +668,8 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
         PlayerInfo info = null;
         if (offlinePlayers.containsKey(player.getUniqueId())) {
             if (useCache) {
-                players.put(player.getUniqueId(), info = offlinePlayers.get(player.getUniqueId()));
+                info = offlinePlayers.get(player.getUniqueId());
+                players.put(player.getUniqueId(), info);
             }
             offlinePlayers.remove(player.getUniqueId());
         }
