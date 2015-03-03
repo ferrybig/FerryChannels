@@ -210,8 +210,6 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent evt) {
-        final String playerName = evt.getPlayer().getName();
-
         if (this.players.containsKey(evt.getPlayer().getUniqueId())) {
             PlayerInfo info = this.players.get(evt.getPlayer().getUniqueId());
             this.offlinePlayers.put(evt.getPlayer().getUniqueId(), this.players.get(evt.getPlayer().getUniqueId()));
