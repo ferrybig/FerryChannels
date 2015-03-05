@@ -565,6 +565,9 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
             for (MetadataValue value : metadata) {
                 boolean muted = value.asBoolean();
                 if (muted) {
+                    if(debug) {
+                        this.getLogger().info(player.getName() + " is muted by plugin " + value.getOwningPlugin().getName());
+                    }
                     return;
                 }
             }
