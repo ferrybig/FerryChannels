@@ -681,7 +681,7 @@ public class FerryChatChannelPlugin extends PluginBase implements Listener, Plug
                 if (group == null) {
                     group = this.defaultInfo.clone();
                 }
-                players.put(player.getUniqueId(), info = group.clone());
+                players.put(player.getUniqueId(), info = new PlayerInfo(group, null, 0, null, null));
 
             } else {
                 players.put(player.getUniqueId(), info = PlayerInfo.load(playerSection, group));
