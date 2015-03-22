@@ -4,15 +4,11 @@
  */
 package me.ferry.bukkit.plugins.ferrychannel;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
