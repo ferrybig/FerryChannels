@@ -1,62 +1,71 @@
+# Leave this false:
 regenerateconfig: false
+
+# Dynamic message:
 channel:
-  recieveformat: '[{channelindex}] {color} {format}'
-  messageformat: '[{channel}] [{tag} <{name}>] {message}'
-  deathformat: '[{channel}] {message}'
-  joinMsg: '{name} has joined "{channel}"'
-  leaveMsg: '{name} has left "{channel}"'
-  limit: 10
-death:
-  enabled: true
-  channels:
-  - 'pvp'
-defaultInfo:
-  chattag: 'newbie'
-  mainChannel: -1
-  nameColor: ''
-  channels:
-  - global
-  - pvp
-channelColors:
-- '&1'
-- '&2'
-- '&3'
-- '&4'
-- '&5'
-- '&6'
-defaultChannels:
-- 'global'
-blockedChannels:
-- 'pvp'
-dontSavePlayers: false
-preventBroadcastAll: false
-preventChannelBroadcasts:
-- 'pvp'
-- 'global'
-fullsave: false
-groups:
-  admin:
-    chattag: 'admin'
-    mainChannel: -1
-    nameColor: ''
-    channels:
-    - global
-    - pvp
-    - admin
+  recieveformat: '&9[{color}{channelindex}&9] {format}'
+  messageformat: '&9[&4{tag}&9|&4{nameColor}{name}&9] {color}{message}'
+  deathformat: '[&4{channel}&9] &c{message}'
+  joinMsg: '{nameColor}{name}{color} has joined channel "{channel}"'
+  leaveMsg: '{nameColor}{name}{color} has left channel "{channel}"'
+# static messages
 messages:
-  channelProtected: 'Channel is protected from messages'
-  channelNoJoined: 'Your are not talking inside a chat channel, try /join global'
-  channel_number_to_high: 'You dont have a channel with this number inside your channel list'
-  chancedDefaultTalkChannel: 'You set channel {color}{id} - {name}&f as your default chat channel'
-  playerOnly: 'Sorry, this plugin is meant for players only!'
-  tooManyChannels: 'You have reached the maximum limit of channels!'
-  joinDone: 'SuccesFully joined channel {color}{id} - {name}'
-  leaveChannelNotFound: 'You cant leave channel {channel} because you aren''t inside it!'
-  alreadyJoined: 'You already joined channel {channel}!'
-  channelNameTooLong: 'There is a limit on channel lengths!'
+  channelProtected: Channel is protected from messages
+  channelNoJoined: Your are not talking inside a chat channel, try /join global
+  channel_number_to_high: You dont have a channel with this number inside your channel list
+  chancedDefaultTalkChannel: You set channel {color}{id} - {name}&f as your default chat channel
   chatList:
     header: 'You''re concurently inside the following channels:'
     body: '{color}{id} &f- {color}{name}'
     footer: ''
     mainChannel: 'You''re default channel is: {color}{id} &f- {color}{name}'
-setDisplayName: false
+
+
+
+channelColors:
+- '&3'
+- '&4'
+- '&2'
+- '&5'
+- '&6'
+
+
+defaultChannels:
+- global
+
+
+blockedChannels:
+- PVP
+
+
+preventChannelBroadcasts:
+- PVP
+- global
+
+
+death:
+  enabled: true
+  channels:
+  - PVP
+  
+  
+# If there is no matching group statement, this will be used
+defaultInfo:
+  chattag: '&7Default'
+  mainChannel: 0
+  nameColor: '&6'
+  channels:
+  - global
+  - PVP
+# Groups
+groups:
+  member:
+    chattag: '&Member'
+    nameColor: '&4'
+  admin:
+    chattag: '&9Admin'
+    nameColor: '&e'
+    
+    
+
+setDisplayName: true
